@@ -1,9 +1,10 @@
-from central.models import Challenge, Idea, IdeaVote, Site, User
+import pytest
 
+from central.models import Challenge, Idea, IdeaVote, Site, User
 from django.core import mail
 from django.test import TestCase
 from scripts import user_activity_export
-
+from openpyxl import Workbook
 
 class UserActivityExportTests(TestCase):
 
@@ -73,3 +74,44 @@ class UserActivityExportTests(TestCase):
 
         # Test that no message has been sent.
         self.assertEqual(len(mail.outbox), 0)
+
+    def test_user_activity(self):
+        wb = Workbook()
+        ws = wb.active
+
+        # create sheet 1 for active users
+        ws1 = wb.create_sheet('Active users', 0)
+        ws1['A1'] = 'Email'
+        ws1['B1'] = 'Activity'
+        ws1['A2'] = self.contributor.email
+        ws1['B2'] = self.idea.name
+        ws1['A3'] = self.manager.email
+        ws1['B3'] = self.challenge.name
+
+        # create sheet 2 for innactive users
+        ws2 = wb.create_sheet('Innactive users', 1)
+        ws2['A1'] = 'Users with no activity'
+        wb.save("user_activity_export.xlsx")
+
+    def test_multiple_manager(self):
+        # add new user after first manager account
+        manager_2 = User(
+            username="manager2",
+            email="manager2@example.com",
+            first_name="Mr",
+            last_name="Manager2",
+            is_manager=True,
+            site=self.site
+        )
+        manager_2.save()
+
+        user_activity_export.main("example.com", "manager@example.com")
+
+        self.assertEqual(len(mail.outbox), 1)
+
+        self.assertEqual(mail.outbox[0].to[0], "manager@example.com")
+
+    @pytest.mark.querytest
+    def test_query_count(self):
+        with self.assertNumQueries(12):
+            user_activity_export.main("example.com", "manager@example.com")

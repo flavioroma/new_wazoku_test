@@ -14,10 +14,11 @@ from collections import Counter
 
 from scripts.utils import Email
 
-import django  # isort:skip
-django.setup()  # isort:skip
+import django
+django.setup()
 
-from central import models  # noqa isort:skip
+from central import models
+import itertools
 
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'exercise.settings')
@@ -29,7 +30,7 @@ def main(client, email):
     # Obtain all the entities we need to process
     site = models.Site.objects.get(domain=client)
     users = models.User.objects.filter(site=site)
-    user_ids = users.values_list('id', flat=True)
+    user_data = users.values_list('id', 'email')
     ideas = models.Idea.objects.filter(site=site)
     idea_creators_ids = ideas.values_list('creator_id', flat=True)
     challenges = models.Challenge.objects.filter(site=site)
@@ -65,13 +66,12 @@ def main(client, email):
     community_counter = Counter(community_creators_ids)
     stage_comment_likes_counter = Counter(stage_comments_likers_ids)
 
-    with open(filename, 'w') as csvfile:
+    with open(filename, 'wb') as csvfile:
         userwriter = csv.writer(csvfile)
         userwriter.writerow(['Active Users', 'Activities'])
 
-        for id in user_ids:
+        for id, user_email in user_data:
             activity = []
-            email = models.User.objects.get(id=id).email
 
             if challenge_creators_counter[id]:
                 action = 'The user created {} challenges.'.format(
@@ -133,7 +133,7 @@ def main(client, email):
                 activity.append(action)
 
             if activity:
-                userwriter.writerow([email] + activity)
+                userwriter.writerow([user_email] + activity)
 
     # Before sending, check we are only sending to a manager
     recipient = models.User.objects.get(email=email)
