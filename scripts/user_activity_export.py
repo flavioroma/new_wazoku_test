@@ -66,7 +66,7 @@ def main(client, email):
     community_counter = Counter(community_creators_ids)
     stage_comment_likes_counter = Counter(stage_comments_likers_ids)
 
-    with open(filename, 'wb') as csvfile:
+    with open(filename, 'w') as csvfile:
         userwriter = csv.writer(csvfile)
         userwriter.writerow(['Active Users', 'Activities'])
 
