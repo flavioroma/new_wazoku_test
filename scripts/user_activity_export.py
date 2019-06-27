@@ -56,6 +56,11 @@ def main(client, email):
 
     stage_comments_likers_ids = []
 
+    for stage in idea_comment_creators_ids:
+        stage_comments_likers_ids.extend(
+            stage.comment.all().values_list('creator_id', flat=True)
+        )
+
     idea_creators_counter = Counter(idea_creators_ids)
     challenge_creators_counter = Counter(challenge_creators_ids)
     idea_comment_counter = Counter(idea_comment_creators_ids)
@@ -71,6 +76,7 @@ def main(client, email):
 
         for id in user_ids:
             activity = []
+
             email = models.User.objects.get(id=id).email
 
             if challenge_creators_counter[id]:
@@ -118,6 +124,7 @@ def main(client, email):
                     action = 'The user is a manager of the community "{}".'.format(
                         community.name,
                     )
+                    m_email = email
                     activity.append(action)
 
                 if community.members.filter(id=id):
@@ -126,6 +133,7 @@ def main(client, email):
                     )
                     activity.append(action)
 
+            # this variabl;e is allways blank as has not been  populated
             if stage_comment_likes_counter[id]:
                 action = 'The user liked {} review comments.'.format(
                     stage_comment_likes_counter[id],
@@ -135,12 +143,14 @@ def main(client, email):
             if activity:
                 userwriter.writerow([email] + activity)
 
+    filename.close()
+
     # Before sending, check we are only sending to a manager
-    recipient = models.User.objects.get(email=email)
+    recipient = models.User.objects.get(email=m_email)
     if recipient.is_manager:
         email_sender = Email()
         email_sender.send_email(
-            send_to=email,
+            send_to=m_email,
             subject='User Activity Export',
             attachment=filename
         )
